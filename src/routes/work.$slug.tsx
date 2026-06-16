@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 
 import { Layout } from "@/components/site/Layout";
 import { Reveal } from "@/components/site/Reveal";
-import { PROJECTS } from "@/lib/site-data";
+import { PROJECTS, type Project } from "@/lib/site-data";
 
 export const Route = createFileRoute("/work/$slug")({
   loader: ({ params }) => {
