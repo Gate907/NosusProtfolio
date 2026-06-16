@@ -35,7 +35,7 @@ export const Route = createFileRoute("/work/$slug")({
 });
 
 function ProjectDetailPage() {
-  const { project } = Route.useLoaderData();
+  const { project } = Route.useLoaderData() as { project: Project };
   const others = PROJECTS.filter((p) => p.slug !== project.slug).slice(0, 3);
 
   const highlights = [
