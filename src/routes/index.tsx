@@ -1,6 +1,15 @@
+import React from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { motion, useScroll, useTransform } from "framer-motion";
-import { useRef, useState } from "react";
+import {
+  motion,
+  useScroll,
+  useTransform,
+  useMotionValue,
+  useVelocity,
+  useSpring,
+  useAnimationFrame,
+} from "framer-motion";
+import { useRef, useState, useCallback } from "react";
 import {
   ArrowRight,
   Sparkles,
@@ -50,12 +59,28 @@ function HomePage() {
       <Stats />
       <ServicesPreview />
       <FeaturedWork />
+      <Showreel />
       <ProcessTimeline />
       <IndustriesGrid />
       <WhyChooseUs />
       <FAQ />
       <FinalCTA />
     </Layout>
+  );
+}
+
+function MagneticButton({ children }: { children: React.ReactNode }) {
+  const { ref, style, onMouseMove, onMouseLeave } = useMagnetic(0.4);
+  return (
+    <motion.div
+      ref={ref}
+      style={style}
+      onMouseMove={onMouseMove}
+      onMouseLeave={onMouseLeave}
+      whileTap={{ scale: 0.97 }}
+    >
+      {children}
+    </motion.div>
   );
 }
 
@@ -85,25 +110,41 @@ function Hero() {
             </motion.span>
 
             <h1 className="mt-6 font-display text-[42px] leading-[1.05] sm:text-[56px] lg:text-[78px] font-bold text-[#101828]">
-              {["We Build Digital", "Products That Feel", "Bright, Fast &"].map((line, i) => (
-                <motion.span
-                  key={i}
-                  initial={{ opacity: 0, y: 24 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.7, delay: 0.3 + i * 0.1, ease: "easeOut" }}
-                  className="block"
-                >
-                  {line}
-                </motion.span>
+              {["We Build Digital", "Products That Feel", "Bright, Fast &"].map((line, lineIdx) => (
+                <span key={lineIdx} className="block">
+                  {line.split("").map((char, charIdx) => {
+                    const globalIdx = ["We Build Digital", "Products That Feel", "Bright, Fast &"]
+                      .slice(0, lineIdx)
+                      .reduce((acc, l) => acc + l.length, 0) + charIdx;
+                    return (
+                      <span key={charIdx} className="inline-block overflow-hidden" style={{ verticalAlign: "bottom" }}>
+                        <motion.span
+                          className="inline-block"
+                          initial={{ y: "110%" }}
+                          animate={{ y: "0%" }}
+                          transition={{ duration: 0.6, delay: 0.2 + globalIdx * 0.018, ease: [0.16, 1, 0.3, 1] }}
+                        >
+                          {char === " " ? " " : char}
+                        </motion.span>
+                      </span>
+                    );
+                  })}
+                </span>
               ))}
-              <motion.span
-                initial={{ opacity: 0, y: 24 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.7, delay: 0.6 }}
-                className="block text-gradient"
-              >
-                Future-Ready.
-              </motion.span>
+              <span className="block overflow-hidden" style={{ verticalAlign: "bottom" }}>
+                {"Future-Ready.".split("").map((char, i) => (
+                  <span key={i} className="inline-block overflow-hidden" style={{ verticalAlign: "bottom" }}>
+                    <motion.span
+                      className="inline-block text-gradient"
+                      initial={{ y: "110%" }}
+                      animate={{ y: "0%" }}
+                      transition={{ duration: 0.6, delay: 0.2 + (45 + i) * 0.018, ease: [0.16, 1, 0.3, 1] }}
+                    >
+                      {char === " " ? " " : char}
+                    </motion.span>
+                  </span>
+                ))}
+              </span>
             </h1>
 
             <motion.p
@@ -122,19 +163,23 @@ function Hero() {
               transition={{ duration: 0.6, delay: 1 }}
               className="mt-9 flex flex-wrap gap-3"
             >
-              <Link
-                to="/services"
-                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-[#101828] text-white font-semibold shadow-soft hover:-translate-y-0.5 transition-all"
-              >
-                Explore Services
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link
-                to="/contact"
-                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-gradient-cta text-white font-semibold shadow-soft hover:shadow-glow hover:-translate-y-0.5 transition-all"
-              >
-                Get Free Consultation
-              </Link>
+              <MagneticButton>
+                <Link
+                  to="/services"
+                  className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-[#101828] text-white font-semibold shadow-soft"
+                >
+                  Explore Services
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </MagneticButton>
+              <MagneticButton>
+                <Link
+                  to="/contact"
+                  className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-gradient-cta text-white font-semibold shadow-soft hover:shadow-glow"
+                >
+                  Get Free Consultation
+                </Link>
+              </MagneticButton>
             </motion.div>
 
             <motion.div
@@ -171,6 +216,53 @@ function Hero() {
   );
 }
 
+function wrap(min: number, max: number, v: number) {
+  const range = max - min;
+  return ((((v - min) % range) + range) % range) + min;
+}
+
+function useMagnetic(strength = 0.35) {
+  const ref = useRef<HTMLDivElement>(null);
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const springX = useSpring(x, { stiffness: 300, damping: 20, mass: 0.5 });
+  const springY = useSpring(y, { stiffness: 300, damping: 20, mass: 0.5 });
+
+  const onMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const el = ref.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    x.set((e.clientX - rect.left - rect.width / 2) * strength);
+    y.set((e.clientY - rect.top - rect.height / 2) * strength);
+  }, [x, y, strength]);
+
+  const onLeave = useCallback(() => {
+    x.set(0);
+    y.set(0);
+  }, [x, y]);
+
+  return { ref, style: { x: springX, y: springY }, onMouseMove: onMove, onMouseLeave: onLeave };
+}
+
+function useCountUp(target: number, duration = 1800, decimals = 0) {
+  const [display, setDisplay] = useState("0");
+  const [started, setStarted] = useState(false);
+  const startAnimation = useCallback(() => {
+    if (started) return;
+    setStarted(true);
+    const startTime = performance.now();
+    const tick = (now: number) => {
+      const progress = Math.min((now - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const val = eased * target;
+      setDisplay(decimals > 0 ? val.toFixed(decimals) : String(Math.floor(val)));
+      if (progress < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, [started, target, duration, decimals]);
+  return { display, startAnimation };
+}
+
 function Marquee() {
   const items = [
     "Web Development",
@@ -182,19 +274,37 @@ function Marquee() {
     "SaaS Platforms",
     "Brand Systems",
   ];
-  const row = [...items, ...items];
+  const row = [...items, ...items, ...items, ...items];
+
+  const { scrollY } = useScroll();
+  const scrollVelocity = useVelocity(scrollY);
+  const smoothVelocity = useSpring(scrollVelocity, { damping: 50, stiffness: 400 });
+  const velocityFactor = useTransform(smoothVelocity, [-3000, 0, 3000], [-8, 0, 8], { clamp: false });
+
+  const baseX = useMotionValue(0);
+  const x = useTransform(baseX, (v) => `${wrap(-25, 0, v)}%`);
+  const directionFactor = useRef(1);
+
+  useAnimationFrame((_: number, delta: number) => {
+    let moveBy = directionFactor.current * 30 * (delta / 1000);
+    if (velocityFactor.get() < 0) directionFactor.current = -1;
+    else if (velocityFactor.get() > 0) directionFactor.current = 1;
+    moveBy += directionFactor.current * moveBy * Math.abs(velocityFactor.get());
+    baseX.set(baseX.get() + moveBy);
+  });
+
   return (
     <section className="py-10 border-y border-[#f2e8d8] bg-white overflow-hidden">
-      <div className="flex whitespace-nowrap animate-marquee">
+      <motion.div style={{ x }} className="flex whitespace-nowrap will-change-transform" aria-hidden>
         {row.map((item, i) => (
-          <div key={i} className="flex items-center mx-8">
+          <div key={i} className="inline-flex items-center shrink-0 mx-8">
             <span className="font-display text-2xl md:text-3xl font-bold text-[#101828]/80">
               {item}
             </span>
-            <span className="ml-8 h-2.5 w-2.5 rounded-full bg-gradient-brand" />
+            <span className="ml-8 h-2.5 w-2.5 rounded-full bg-gradient-brand flex-shrink-0" />
           </div>
         ))}
-      </div>
+      </motion.div>
     </section>
   );
 }
@@ -240,22 +350,24 @@ function WhoWeAre() {
           <div className="relative">
             <div className="absolute -inset-8 rounded-[40px] bg-gradient-brand opacity-20 blur-3xl" />
             <div className="relative grid grid-cols-2 gap-4">
-              <div className="rounded-3xl p-6 bg-white border border-[#f2e8d8] shadow-card">
-                <div className="font-display text-5xl font-bold text-gradient">8+</div>
-                <div className="mt-2 text-sm text-[#475467]">Years building products</div>
-              </div>
-              <div className="rounded-3xl p-6 bg-[#fff7e6] border border-[#f2e8d8]">
-                <div className="font-display text-5xl font-bold text-[#ff7a00]">12</div>
-                <div className="mt-2 text-sm text-[#475467]">Senior product folks</div>
-              </div>
-              <div className="rounded-3xl p-6 bg-[#daf7ee] border border-[#06d6a0]/20">
-                <div className="font-display text-5xl font-bold text-[#06d6a0]">120+</div>
-                <div className="mt-2 text-sm text-[#475467]">Products shipped</div>
-              </div>
-              <div className="rounded-3xl p-6 bg-[#e0f2f8] border border-[#118ab2]/20">
-                <div className="font-display text-5xl font-bold text-[#118ab2]">22</div>
-                <div className="mt-2 text-sm text-[#475467]">Industry awards</div>
-              </div>
+              {[
+                { val: "8+", sub: "Years building products", bg: "bg-white border-[#f2e8d8]", color: "text-gradient" },
+                { val: "12", sub: "Senior product folks", bg: "bg-[#fff7e6] border-[#f2e8d8]", color: "text-[#ff7a00]" },
+                { val: "120+", sub: "Products shipped", bg: "bg-[#daf7ee] border-[#06d6a0]/20", color: "text-[#06d6a0]" },
+                { val: "22", sub: "Industry awards", bg: "bg-[#e0f2f8] border-[#118ab2]/20", color: "text-[#118ab2]" },
+              ].map((card, i) => (
+                <motion.div
+                  key={card.sub}
+                  className={`rounded-3xl p-6 border ${card.bg}`}
+                  initial={{ opacity: 0, filter: "blur(12px)", scale: 0.96 }}
+                  whileInView={{ opacity: 1, filter: "blur(0px)", scale: 1 }}
+                  viewport={{ once: true, margin: "-60px" }}
+                  transition={{ duration: 0.6, delay: 0.15 + i * 0.1, ease: "easeOut" }}
+                >
+                  <div className={`font-display text-5xl font-bold ${card.color}`}>{card.val}</div>
+                  <div className="mt-2 text-sm text-[#475467]">{card.sub}</div>
+                </motion.div>
+              ))}
             </div>
           </div>
         </Reveal>
@@ -264,12 +376,33 @@ function WhoWeAre() {
   );
 }
 
+function CounterStat({ target, suffix, label, color, delay, decimals = 0 }: {
+  target: number; suffix: string; label: string; color: string; delay: number; decimals?: number;
+}) {
+  const { display, startAnimation } = useCountUp(target, 1600, decimals);
+  return (
+    <motion.div
+      className="p-8 text-center bg-white"
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.5, delay }}
+      onViewportEnter={startAnimation}
+    >
+      <div className="font-display text-4xl md:text-5xl font-bold" style={{ color }}>
+        {display}{suffix}
+      </div>
+      <div className="mt-2 text-sm text-[#475467]">{label}</div>
+    </motion.div>
+  );
+}
+
 function Stats() {
   const stats = [
-    { value: "120+", label: "Products shipped", color: "#ff7a00" },
-    { value: "38%", label: "Avg conversion lift", color: "#06d6a0" },
-    { value: "4.9/5", label: "Client rating", color: "#ffd166" },
-    { value: "14", label: "Countries served", color: "#118ab2" },
+    { target: 120, suffix: "+", label: "Products shipped", color: "#ff7a00", decimals: 0 },
+    { target: 38, suffix: "%", label: "Avg conversion lift", color: "#06d6a0", decimals: 0 },
+    { target: 4.9, suffix: "/5", label: "Client rating", color: "#ffd166", decimals: 1 },
+    { target: 14, suffix: "", label: "Countries served", color: "#118ab2", decimals: 0 },
   ];
   return (
     <section className="py-12">
@@ -277,17 +410,7 @@ function Stats() {
         <div className="rounded-[32px] bg-gradient-brand p-1 shadow-glow">
           <div className="rounded-[28px] bg-white grid grid-cols-2 md:grid-cols-4 gap-px overflow-hidden">
             {stats.map((s, i) => (
-              <Reveal key={s.label} delay={i * 0.05}>
-                <div className="p-8 text-center bg-white">
-                  <div
-                    className="font-display text-4xl md:text-5xl font-bold"
-                    style={{ color: s.color }}
-                  >
-                    {s.value}
-                  </div>
-                  <div className="mt-2 text-sm text-[#475467]">{s.label}</div>
-                </div>
-              </Reveal>
+              <CounterStat key={s.label} {...s} delay={i * 0.08} />
             ))}
           </div>
         </div>
@@ -335,17 +458,104 @@ function ServicesPreview() {
   );
 }
 
+function ParallaxWorkCard({ p, depth = 1 }: { p: (typeof PROJECTS)[number]; depth?: number }) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: cardRef, offset: ["start end", "end start"] });
+
+  // Spring-smoothed parallax — prevents sharp jumps when scroll direction reverses
+  const rawY = useTransform(scrollYProgress, [0, 1], [-12 * depth, 12 * depth]);
+  const y = useSpring(rawY, { stiffness: 80, damping: 20, mass: 0.5 });
+
+  // Subtle counter-scale: as image shifts down, it breathes slightly larger — depth illusion
+  const scale = useTransform(scrollYProgress, [0, 0.5, 1], [1.15, 1.08, 1.15]);
+
+  return (
+    <motion.div
+      ref={cardRef}
+      initial={{ opacity: 0, y: 32 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-80px" }}
+      transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+    >
+      <Link
+        to="/work/$slug"
+        params={{ slug: p.slug }}
+        className="group block relative rounded-[28px] overflow-hidden bg-white border border-[#f2e8d8] shadow-card hover:shadow-glow transition-all"
+      >
+        <div className={`relative aspect-[16/10] bg-gradient-to-br ${p.gradient} overflow-hidden`}>
+          {/* Parallax layer — scaled up so edges never show during travel */}
+          <motion.div style={{ y, scale }} className="absolute inset-0">
+            {/* Ken Burns slow zoom on the gradient background */}
+            <div className="absolute inset-0 animate-ken-burns" />
+            <div className="absolute inset-0 grid-pattern opacity-30" />
+            <div className="absolute inset-0 grid place-items-center">
+              <div className="text-white/95 font-display text-3xl font-bold drop-shadow-lg">
+                {p.client}
+              </div>
+            </div>
+          </motion.div>
+          <div className="absolute inset-0 bg-[#101828]/0 group-hover:bg-[#101828]/30 transition-colors" />
+          <div className="absolute bottom-5 left-5 right-5 flex items-center justify-between translate-y-3 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all">
+            <span className="px-3 py-1.5 rounded-full bg-white text-xs font-semibold text-[#101828]">
+              View case study
+            </span>
+            <span className="h-10 w-10 rounded-full bg-white grid place-items-center">
+              <ArrowRight className="h-5 w-5 text-[#101828]" />
+            </span>
+          </div>
+        </div>
+        <div className="p-6">
+          <div className="flex items-center gap-2">
+            <span className="px-3 py-1 rounded-full bg-[#fff7e6] text-[#ff7a00] text-xs font-semibold">
+              {p.category}
+            </span>
+          </div>
+          <h3 className="mt-3 font-display text-2xl font-bold text-[#101828]">{p.title}</h3>
+          <p className="mt-2 text-[#475467]">{p.description}</p>
+        </div>
+      </Link>
+    </motion.div>
+  );
+}
+
 function FeaturedWork() {
   const featured = PROJECTS.filter((p) => p.featured);
   return (
     <section className="relative py-24 md:py-32 bg-[#fff7e6] border-y border-[#f2e8d8] overflow-hidden">
       <div className="container-x">
         <div className="flex items-end justify-between flex-wrap gap-6">
-          <SectionHeading
-            align="left"
-            eyebrow="Featured work"
-            title={<>Recent products we're <span className="text-gradient">proud of</span></>}
-          />
+          <div className="max-w-3xl text-left">
+            <motion.span
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ duration: 0.5 }}
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-[#f2e8d8] text-xs font-semibold uppercase tracking-wider text-[#ff7a00]"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-[#ff7a00]" />
+              Featured work
+            </motion.span>
+            {/* Curtain wipe reveal */}
+            <div className="mt-5 relative overflow-hidden">
+              <motion.h2
+                initial={{ opacity: 1 }}
+                whileInView={{ opacity: 1 }}
+                viewport={{ once: true }}
+                className="font-display text-4xl md:text-5xl lg:text-[56px] font-bold leading-[1.05] text-[#101828]"
+              >
+                Recent products we're <span className="text-gradient">proud of</span>
+              </motion.h2>
+              {/* The curtain overlay that sweeps left then exits right */}
+              <motion.div
+                className="absolute inset-0 bg-[#101828] origin-left"
+                initial={{ scaleX: 1 }}
+                whileInView={{ scaleX: 0 }}
+                viewport={{ once: true, margin: "-80px" }}
+                transition={{ duration: 0.7, delay: 0.2, ease: [0.77, 0, 0.175, 1] }}
+                style={{ transformOrigin: "right" }}
+              />
+            </div>
+          </div>
           <Link
             to="/work"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white border border-[#f2e8d8] text-sm font-semibold text-[#101828] hover:bg-[#101828] hover:text-white transition-all"
@@ -357,43 +567,62 @@ function FeaturedWork() {
 
         <div className="mt-14 grid md:grid-cols-2 gap-8">
           {featured.map((p, i) => (
-            <Reveal key={p.slug} delay={i * 0.1}>
-              <Link
-                to="/work/$slug"
-                params={{ slug: p.slug }}
-                className="group block relative rounded-[28px] overflow-hidden bg-white border border-[#f2e8d8] shadow-card hover:shadow-glow transition-all"
-              >
-                <div className={`relative aspect-[16/10] bg-gradient-to-br ${p.gradient} overflow-hidden`}>
-                  <div className="absolute inset-0 grid-pattern opacity-30" />
-                  <div className="absolute inset-0 grid place-items-center">
-                    <div className="text-white/95 font-display text-3xl font-bold drop-shadow-lg">
-                      {p.client}
-                    </div>
-                  </div>
-                  <div className="absolute inset-0 bg-[#101828]/0 group-hover:bg-[#101828]/30 transition-colors" />
-                  <div className="absolute bottom-5 left-5 right-5 flex items-center justify-between translate-y-3 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all">
-                    <span className="px-3 py-1.5 rounded-full bg-white text-xs font-semibold text-[#101828]">
-                      View case study
-                    </span>
-                    <span className="h-10 w-10 rounded-full bg-white grid place-items-center">
-                      <ArrowRight className="h-5 w-5 text-[#101828]" />
-                    </span>
-                  </div>
-                </div>
-                <div className="p-6">
-                  <div className="flex items-center gap-2">
-                    <span className="px-3 py-1 rounded-full bg-[#fff7e6] text-[#ff7a00] text-xs font-semibold">
-                      {p.category}
-                    </span>
-                  </div>
-                  <h3 className="mt-3 font-display text-2xl font-bold text-[#101828]">{p.title}</h3>
-                  <p className="mt-2 text-[#475467]">{p.description}</p>
-                </div>
-              </Link>
-            </Reveal>
+            <ParallaxWorkCard key={p.slug} p={p} depth={i % 2 === 0 ? 1 : 1.6} />
           ))}
         </div>
       </div>
+    </section>
+  );
+}
+
+function Showreel() {
+  const ref = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
+  const scale = useTransform(scrollYProgress, [0, 0.35, 0.65], [0.55, 1, 1]);
+  const borderRadius = useTransform(scrollYProgress, [0, 0.35, 0.65], ["80px", "0px", "0px"]);
+  const opacity = useTransform(scrollYProgress, [0, 0.15, 0.85, 1], [0, 1, 1, 0]);
+  const textY = useTransform(scrollYProgress, [0.1, 0.4], [40, 0]);
+  const textOpacity = useTransform(scrollYProgress, [0.1, 0.4], [0, 1]);
+
+  return (
+    <section ref={ref} className="relative py-24 md:py-32 flex items-center justify-center overflow-hidden">
+      <motion.div
+        style={{ scale, borderRadius, opacity }}
+        className="relative w-full mx-4 md:mx-8 aspect-[16/7] bg-gradient-to-br from-[#101828] via-[#1a2540] to-[#0d1f3c] overflow-hidden will-change-transform"
+      >
+        {/* Animated gradient orbs inside */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-1/4 left-1/4 h-64 w-64 rounded-full bg-[#ff7a00]/30 blur-3xl animate-blob" />
+          <div className="absolute bottom-1/4 right-1/4 h-80 w-80 rounded-full bg-[#06d6a0]/20 blur-3xl animate-blob" style={{ animationDelay: "-6s" }} />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-96 w-96 rounded-full bg-[#118ab2]/20 blur-3xl animate-blob" style={{ animationDelay: "-12s" }} />
+        </div>
+        {/* Grid pattern overlay */}
+        <div className="absolute inset-0 grid-pattern opacity-10" />
+        {/* Center content */}
+        <motion.div
+          style={{ y: textY, opacity: textOpacity }}
+          className="absolute inset-0 flex flex-col items-center justify-center text-center px-6"
+        >
+          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur text-xs font-semibold uppercase tracking-wider text-white/80 mb-6">
+            <Sparkles className="h-3.5 w-3.5" /> Our Work in Motion
+          </span>
+          <h2 className="font-display text-4xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.05]">
+            Products that feel<br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ff7a00] via-[#ffd166] to-[#06d6a0]">
+              alive.
+            </span>
+          </h2>
+          <p className="mt-6 text-lg text-white/60 max-w-xl">
+            Every pixel crafted with purpose. Every interaction felt by your users.
+          </p>
+          <Link
+            to="/work"
+            className="mt-8 inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-white text-[#101828] font-semibold hover:-translate-y-0.5 transition-all"
+          >
+            See All Work <ArrowRight className="h-4 w-4" />
+          </Link>
+        </motion.div>
+      </motion.div>
     </section>
   );
 }
@@ -595,19 +824,23 @@ function FinalCTA() {
               Book a free 30-minute consultation. We'll discuss your goals and outline a plan.
             </p>
             <div className="mt-10 flex flex-wrap gap-3 justify-center">
-              <Link
-                to="/contact"
-                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-white text-[#101828] font-semibold hover:-translate-y-0.5 transition-all"
-              >
-                Start Your Project
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link
-                to="/work"
-                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-white/15 backdrop-blur border border-white/30 text-white font-semibold hover:bg-white/25 transition-all"
-              >
-                View Our Work
-              </Link>
+              <MagneticButton>
+                <Link
+                  to="/contact"
+                  className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-white text-[#101828] font-semibold"
+                >
+                  Start Your Project
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </MagneticButton>
+              <MagneticButton>
+                <Link
+                  to="/work"
+                  className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-white/15 backdrop-blur border border-white/30 text-white font-semibold hover:bg-white/25 transition-all"
+                >
+                  View Our Work
+                </Link>
+              </MagneticButton>
             </div>
           </div>
         </div>

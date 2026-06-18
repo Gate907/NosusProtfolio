@@ -53,10 +53,11 @@ export function Navbar() {
               <Link
                 to={item.to}
                 activeOptions={{ exact: item.to === "/" }}
-                className="px-4 py-2 text-sm font-medium text-[#475467] hover:text-[#101828] transition-colors rounded-full"
-                activeProps={{ className: "px-4 py-2 text-sm font-semibold text-[#ff7a00] rounded-full bg-[#fff7e6]" }}
+                className="relative px-4 py-2 text-sm font-medium text-[#475467] hover:text-[#101828] transition-colors rounded-full group/nav"
+                activeProps={{ className: "relative px-4 py-2 text-sm font-semibold text-[#ff7a00] rounded-full bg-[#fff7e6] group/nav" }}
               >
                 {item.label}
+                <span className="absolute bottom-0.5 left-4 right-4 h-[1.5px] bg-[#101828] origin-right scale-x-0 group-hover/nav:scale-x-100 group-hover/nav:origin-left transition-transform duration-300 ease-out rounded-full" />
               </Link>
             </motion.div>
           ))}

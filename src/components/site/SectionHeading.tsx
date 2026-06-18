@@ -27,15 +27,17 @@ export function SectionHeading({
           {eyebrow}
         </motion.span>
       )}
-      <motion.h2
-        initial={{ opacity: 0, y: 24 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-80px" }}
-        transition={{ duration: 0.6, delay: 0.1 }}
-        className="mt-5 font-display text-4xl md:text-5xl lg:text-[56px] font-bold leading-[1.05] text-[#101828]"
-      >
-        {title}
-      </motion.h2>
+      <div className="mt-5 overflow-hidden">
+        <motion.h2
+          initial={{ clipPath: "inset(0 100% 0 0)", opacity: 1 }}
+          whileInView={{ clipPath: "inset(0 0% 0 0)" }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.85, delay: 0.1, ease: [0.77, 0, 0.175, 1] }}
+          className="font-display text-4xl md:text-5xl lg:text-[56px] font-bold leading-[1.05] text-[#101828]"
+        >
+          {title}
+        </motion.h2>
+      </div>
       {description && (
         <motion.p
           initial={{ opacity: 0, y: 16 }}
