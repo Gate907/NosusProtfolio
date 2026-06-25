@@ -17,10 +17,10 @@ export function Blobs({ variant = "hero" }: { variant?: "hero" | "soft" | "cta" 
   }
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute top-[-10%] left-[-5%] h-[480px] w-[480px] rounded-full bg-[#ff7a00]/25 blur-3xl animate-blob" />
-      <div className="absolute top-[10%] right-[-8%] h-[520px] w-[520px] rounded-full bg-[#ffd166]/40 blur-3xl animate-blob" style={{ animationDelay: "-4s" }} />
-      <div className="absolute bottom-[-15%] left-[20%] h-[460px] w-[460px] rounded-full bg-[#06d6a0]/25 blur-3xl animate-blob" style={{ animationDelay: "-9s" }} />
-      <div className="absolute bottom-[5%] right-[15%] h-[360px] w-[360px] rounded-full bg-[#118ab2]/20 blur-3xl animate-blob" style={{ animationDelay: "-13s" }} />
+      <div className="absolute top-[-10%] left-[-5%] h-[clamp(320px,35vw,560px)] w-[clamp(320px,35vw,560px)] rounded-full bg-[#ff7a00]/25 blur-3xl animate-blob" />
+      <div className="absolute top-[10%] right-[-8%] h-[clamp(340px,38vw,600px)] w-[clamp(340px,38vw,600px)] rounded-full bg-[#ffd166]/40 blur-3xl animate-blob" style={{ animationDelay: "-4s" }} />
+      <div className="absolute bottom-[-15%] left-[20%] h-[clamp(300px,32vw,520px)] w-[clamp(300px,32vw,520px)] rounded-full bg-[#06d6a0]/25 blur-3xl animate-blob" style={{ animationDelay: "-9s" }} />
+      <div className="absolute bottom-[5%] right-[15%] h-[clamp(240px,28vw,460px)] w-[clamp(240px,28vw,460px)] rounded-full bg-[#118ab2]/20 blur-3xl animate-blob" style={{ animationDelay: "-13s" }} />
       <div className="absolute inset-0 grid-pattern opacity-60" />
     </div>
   );

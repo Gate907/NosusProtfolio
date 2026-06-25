@@ -93,6 +93,7 @@
 
   html {
     scroll-behavior: smooth;
+    overflow-x: hidden;
   }
 
   body {
@@ -100,18 +101,29 @@
     color: var(--foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
     letter-spacing: -0.02em;
   }
+
+  /* Hide scrollbar */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  * {
+    scrollbar-width: none;
+  }
 }
 
 @utility container-x {
-  max-width: 1320px;
+  width: 100%;
+  max-width: min(1320px, 90vw);
   margin-inline: auto;
-  padding-inline: 1.25rem;
+  padding-inline: clamp(1.25rem, 4vw, 4rem);
 }
 
 @utility text-gradient {

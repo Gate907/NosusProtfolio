@@ -13,4 +13,9 @@ export default defineConfig({
   nitro: {
     preset: "vercel",
   },
+  vite: {
+    resolve: {
+      tsconfigPaths: true,
+    },
+  },
 });

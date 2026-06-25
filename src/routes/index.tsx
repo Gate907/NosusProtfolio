@@ -1,15 +1,13 @@
-import React from "react";
+﻿import React from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   motion,
   useScroll,
   useTransform,
   useMotionValue,
-  useVelocity,
   useSpring,
-  useAnimationFrame,
 } from "framer-motion";
-import { useRef, useState, useCallback } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import {
   ArrowRight,
   Sparkles,
@@ -27,6 +25,7 @@ import {
 import { Layout } from "@/components/site/Layout";
 import { Blobs } from "@/components/site/Blobs";
 import { HeroVisual } from "@/components/site/HeroVisual";
+import { MarqueeStrip } from "@/components/site/MarqueeStrip";
 import { SectionHeading } from "@/components/site/SectionHeading";
 import { Reveal } from "@/components/site/Reveal";
 import { SERVICES, PROJECTS, INDUSTRIES, PROCESS, FAQS } from "@/lib/site-data";
@@ -54,7 +53,7 @@ function HomePage() {
   return (
     <Layout>
       <Hero />
-      <Marquee />
+      <MarqueeStrip />
       <WhoWeAre />
       <Stats />
       <ServicesPreview />
@@ -86,19 +85,105 @@ function MagneticButton({ children }: { children: React.ReactNode }) {
 
 function Hero() {
   const ref = useRef<HTMLDivElement>(null);
+
+  // Scroll parallax for the whole background
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
-  const yVisual = useTransform(scrollYProgress, [0, 1], [0, -80]);
   const yBg = useTransform(scrollYProgress, [0, 1], [0, 120]);
+  const yVisual = useTransform(scrollYProgress, [0, 1], [0, -80]);
+
+  // Mouse-tracking state → spring-smoothed MotionValues
+  const rawMouseX = useMotionValue(0);
+  const rawMouseY = useMotionValue(0);
+  const mouseX = useSpring(rawMouseX, { stiffness: 60, damping: 20, mass: 0.8 });
+  const mouseY = useSpring(rawMouseY, { stiffness: 60, damping: 20, mass: 0.8 });
+
+  // Per-layer parallax — deeper layers move more
+  const imgX  = useTransform(mouseX, v => v * 0.018);
+  const imgY  = useTransform(mouseY, v => v * 0.018);
+  const b1X   = useTransform(mouseX, v => v * 0.04);
+  const b1Y   = useTransform(mouseY, v => v * 0.04);
+  const b2X   = useTransform(mouseX, v => v * 0.07);
+  const b2Y   = useTransform(mouseY, v => v * 0.07);
+  const b3X   = useTransform(mouseX, v => v * 0.05);
+  const b3Y   = useTransform(mouseY, v => v * 0.05);
+  const b4X   = useTransform(mouseX, v => v * 0.09);
+  const b4Y   = useTransform(mouseY, v => v * 0.09);
+  const gridX = useTransform(mouseX, v => v * 0.025);
+  const gridY = useTransform(mouseY, v => v * 0.025);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLElement>) => {
+    const rect = ref.current?.getBoundingClientRect();
+    if (!rect) return;
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    rawMouseX.set(e.clientX - cx);
+    rawMouseY.set(e.clientY - cy);
+  }, [rawMouseX, rawMouseY]);
+
+  const handleMouseLeave = useCallback(() => {
+    rawMouseX.set(0);
+    rawMouseY.set(0);
+  }, [rawMouseX, rawMouseY]);
 
   return (
-    <section ref={ref} className="relative pt-32 md:pt-40 pb-20 md:pb-32 overflow-hidden">
+    <section
+      ref={ref}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      className="relative z-0 pt-32 md:pt-40 pb-20 md:pb-32 overflow-hidden"
+    >
+      {/* ── Layer 0: scroll parallax wrapper ── */}
       <motion.div style={{ y: yBg }} className="absolute inset-0">
-        <Blobs variant="hero" />
+
+        {/* Layer 1 — Banner image (slowest, furthest back) */}
+        <motion.div
+          style={{ x: imgX, y: imgY }}
+          className="absolute inset-[-4%] will-change-transform"
+        >
+          <img
+            src="/image/HomeBanner.png"
+            alt=""
+            className="w-full h-full object-cover object-center"
+          />
+        </motion.div>
+
+        {/* Overlay */}
+        <div className="absolute inset-0 bg-white/72" />
+
+        {/* Layer 2 — Blob 1 (orange, top-left) */}
+        <motion.div
+          style={{ x: b1X, y: b1Y }}
+          className="pointer-events-none absolute top-[-10%] left-[-5%] h-[clamp(320px,35vw,560px)] w-[clamp(320px,35vw,560px)] rounded-full bg-[#ff7a00]/25 blur-3xl animate-blob will-change-transform"
+        />
+
+        {/* Layer 3 — Blob 2 (yellow, top-right, deeper) */}
+        <motion.div
+          style={{ x: b2X, y: b2Y, animationDelay: "-4s" }}
+          className="pointer-events-none absolute top-[10%] right-[-8%] h-[clamp(340px,38vw,600px)] w-[clamp(340px,38vw,600px)] rounded-full bg-[#ffd166]/40 blur-3xl animate-blob will-change-transform"
+        />
+
+        {/* Layer 4 — Blob 3 (green, bottom-left) */}
+        <motion.div
+          style={{ x: b3X, y: b3Y }}
+          className="pointer-events-none absolute bottom-[-15%] left-[20%] h-[clamp(300px,32vw,520px)] w-[clamp(300px,32vw,520px)] rounded-full bg-[#06d6a0]/25 blur-3xl animate-blob will-change-transform"
+        />
+
+        {/* Layer 5 — Blob 4 (blue, bottom-right, deepest) */}
+        <motion.div
+          style={{ x: b4X, y: b4Y }}
+          className="pointer-events-none absolute bottom-[5%] right-[15%] h-[clamp(240px,28vw,460px)] w-[clamp(240px,28vw,460px)] rounded-full bg-[#118ab2]/20 blur-3xl animate-blob will-change-transform"
+        />
+
+        {/* Layer 6 — Grid pattern (mid depth) */}
+        <motion.div
+          style={{ x: gridX, y: gridY }}
+          className="pointer-events-none absolute inset-[-3%] grid-pattern opacity-60 will-change-transform"
+        />
       </motion.div>
 
       <div className="container-x relative">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-          <div>
+        <div className="grid lg:grid-cols-[1fr_minmax(0,560px)] gap-12 lg:gap-16 xl:gap-20 items-center">
+          <div className="min-w-0">
             <motion.span
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
@@ -109,40 +194,41 @@ function Hero() {
               Creative Digital Product Studio
             </motion.span>
 
-            <h1 className="mt-6 font-display text-[42px] leading-[1.05] sm:text-[56px] lg:text-[78px] font-bold text-[#101828]">
-              {["We Build Digital", "Products That Feel", "Bright, Fast &"].map((line, lineIdx) => (
-                <span key={lineIdx} className="block">
-                  {line.split("").map((char, charIdx) => {
-                    const globalIdx = ["We Build Digital", "Products That Feel", "Bright, Fast &"]
-                      .slice(0, lineIdx)
-                      .reduce((acc, l) => acc + l.length, 0) + charIdx;
+            <h1 className="mt-6 font-display text-[clamp(32px,3.2vw,60px)] leading-[1.2] font-bold text-[#101828]">
+              {[
+                [{ w: "We" }, { w: "Build" }, { w: "Digital", g: true }],
+                [{ w: "Products" }, { w: "That" , g: true}, { w: "Feel" }],
+                [{ w: "Bright,", g:"true"}, { w: "Fast" }, { w: "&", g: true }],
+              ].map((words, lineIdx) => (
+                <span key={lineIdx} className="block overflow-hidden py-[0.08em]">
+                  {words.map((item, wi) => {
+                    const globalWi = [3, 3, 3].slice(0, lineIdx).reduce((a, n) => a + n, 0) + wi;
                     return (
-                      <span key={charIdx} className="inline-block overflow-hidden" style={{ verticalAlign: "bottom" }}>
+                      <span key={wi} className="inline-block mr-[0.28em] last:mr-0">
                         <motion.span
-                          className="inline-block"
-                          initial={{ y: "110%" }}
+                          className={`inline-block${item.g ? " text-gradient" : ""}`}
+                          initial={{ y: "115%" }}
                           animate={{ y: "0%" }}
-                          transition={{ duration: 0.6, delay: 0.2 + globalIdx * 0.018, ease: [0.16, 1, 0.3, 1] }}
+                          transition={{ duration: 0.65, delay: 0.18 + globalWi * 0.07, ease: [0.16, 1, 0.3, 1] }}
                         >
-                          {char === " " ? " " : char}
+                          {item.w}
                         </motion.span>
                       </span>
                     );
                   })}
                 </span>
               ))}
-              <span className="block overflow-hidden" style={{ verticalAlign: "bottom" }}>
-                {"Future-Ready.".split("").map((char, i) => (
-                  <span key={i} className="inline-block overflow-hidden" style={{ verticalAlign: "bottom" }}>
-                    <motion.span
-                      className="inline-block text-gradient"
-                      initial={{ y: "110%" }}
-                      animate={{ y: "0%" }}
-                      transition={{ duration: 0.6, delay: 0.2 + (45 + i) * 0.018, ease: [0.16, 1, 0.3, 1] }}
-                    >
-                      {char === " " ? " " : char}
-                    </motion.span>
-                  </span>
+              <span className="block overflow-hidden py-[0.1em]">
+                {["Future-Ready."].map((word, i) => (
+                  <motion.span
+                    key={i}
+                    className="inline-block text-gradient"
+                    initial={{ y: "115%" }}
+                    animate={{ y: "0%" }}
+                    transition={{ duration: 0.65, delay: 0.18 + 9 * 0.07, ease: [0.16, 1, 0.3, 1] }}
+                  >
+                    {word}
+                  </motion.span>
                 ))}
               </span>
             </h1>
@@ -207,18 +293,13 @@ function Hero() {
             </motion.div>
           </div>
 
-          <motion.div style={{ y: yVisual }}>
+          <motion.div style={{ y: yVisual }} className="min-w-0">
             <HeroVisual />
           </motion.div>
         </div>
       </div>
     </section>
   );
-}
-
-function wrap(min: number, max: number, v: number) {
-  const range = max - min;
-  return ((((v - min) % range) + range) % range) + min;
 }
 
 function useMagnetic(strength = 0.35) {
@@ -263,56 +344,10 @@ function useCountUp(target: number, duration = 1800, decimals = 0) {
   return { display, startAnimation };
 }
 
-function Marquee() {
-  const items = [
-    "Web Development",
-    "Mobile Apps",
-    "UI/UX Design",
-    "E-commerce",
-    "Custom Software",
-    "AI & Automation",
-    "SaaS Platforms",
-    "Brand Systems",
-  ];
-  const row = [...items, ...items, ...items, ...items];
-
-  const { scrollY } = useScroll();
-  const scrollVelocity = useVelocity(scrollY);
-  const smoothVelocity = useSpring(scrollVelocity, { damping: 50, stiffness: 400 });
-  const velocityFactor = useTransform(smoothVelocity, [-3000, 0, 3000], [-8, 0, 8], { clamp: false });
-
-  const baseX = useMotionValue(0);
-  const x = useTransform(baseX, (v) => `${wrap(-25, 0, v)}%`);
-  const directionFactor = useRef(1);
-
-  useAnimationFrame((_: number, delta: number) => {
-    let moveBy = directionFactor.current * 30 * (delta / 1000);
-    if (velocityFactor.get() < 0) directionFactor.current = -1;
-    else if (velocityFactor.get() > 0) directionFactor.current = 1;
-    moveBy += directionFactor.current * moveBy * Math.abs(velocityFactor.get());
-    baseX.set(baseX.get() + moveBy);
-  });
-
-  return (
-    <section className="py-10 border-y border-[#f2e8d8] bg-white overflow-hidden">
-      <motion.div style={{ x }} className="flex whitespace-nowrap will-change-transform" aria-hidden>
-        {row.map((item, i) => (
-          <div key={i} className="inline-flex items-center shrink-0 mx-8">
-            <span className="font-display text-2xl md:text-3xl font-bold text-[#101828]/80">
-              {item}
-            </span>
-            <span className="ml-8 h-2.5 w-2.5 rounded-full bg-gradient-brand flex-shrink-0" />
-          </div>
-        ))}
-      </motion.div>
-    </section>
-  );
-}
-
 function WhoWeAre() {
   return (
-    <section className="relative py-24 md:py-32 overflow-hidden">
-      <Blobs variant="soft" />
+    <section className="relative py-24 md:py-32">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none"><Blobs variant="soft" /></div>
       <div className="container-x relative grid lg:grid-cols-2 gap-14 items-center">
         <Reveal>
           <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#fff7e6] border border-[#f2e8d8] text-xs font-semibold uppercase tracking-wider text-[#ff7a00]">
@@ -521,7 +556,7 @@ function ParallaxWorkCard({ p, depth = 1 }: { p: (typeof PROJECTS)[number]; dept
 function FeaturedWork() {
   const featured = PROJECTS.filter((p) => p.featured);
   return (
-    <section className="relative py-24 md:py-32 bg-[#fff7e6] border-y border-[#f2e8d8] overflow-hidden">
+    <section className="relative py-24 md:py-32 bg-[#fff7e6] border-y border-[#f2e8d8]">
       <div className="container-x">
         <div className="flex items-end justify-between flex-wrap gap-6">
           <div className="max-w-3xl text-left">
@@ -586,9 +621,10 @@ function Showreel() {
 
   return (
     <section ref={ref} className="relative py-24 md:py-32 flex items-center justify-center overflow-hidden">
+      <div className="container-x w-full">
       <motion.div
         style={{ scale, borderRadius, opacity }}
-        className="relative w-full mx-4 md:mx-8 aspect-[16/7] bg-gradient-to-br from-[#101828] via-[#1a2540] to-[#0d1f3c] overflow-hidden will-change-transform"
+        className="relative w-full aspect-[16/7] bg-gradient-to-br from-[#101828] via-[#1a2540] to-[#0d1f3c] overflow-hidden will-change-transform"
       >
         {/* Animated gradient orbs inside */}
         <div className="absolute inset-0 overflow-hidden">
@@ -623,13 +659,14 @@ function Showreel() {
           </Link>
         </motion.div>
       </motion.div>
+      </div>
     </section>
   );
 }
 
 function ProcessTimeline() {
   const ref = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start 0.8", "end 0.2"] });
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start 0.85", "end 0.15"] });
   const lineHeight = useTransform(scrollYProgress, [0, 1], ["0%", "100%"]);
 
   return (
@@ -641,42 +678,49 @@ function ProcessTimeline() {
           description="No black boxes. You're involved at every step — from kickoff to launch."
         />
 
-        <div ref={ref} className="mt-20 relative max-w-4xl mx-auto">
-          <div className="absolute left-8 md:left-1/2 top-0 bottom-0 w-1 -translate-x-1/2 bg-[#f2e8d8] rounded-full" />
+        <div ref={ref} className="mt-20 relative max-w-5xl mx-auto">
+          {/* Vertical spine — center on md+, left on mobile */}
+          <div className="absolute left-7 md:left-1/2 top-0 bottom-0 w-[2px] -translate-x-1/2 bg-[#f2e8d8] rounded-full" />
           <motion.div
-            style={{ height: lineHeight }}
-            className="absolute left-8 md:left-1/2 top-0 w-1 -translate-x-1/2 bg-gradient-brand rounded-full"
+            style={{ height: lineHeight, background: "var(--gradient-brand)" }}
+            className="absolute left-7 md:left-1/2 top-0 w-[2px] -translate-x-1/2 origin-top rounded-full"
           />
 
-          <div className="space-y-12">
-            {PROCESS.map((p, i) => (
-              <Reveal key={p.step} delay={i * 0.08}>
-                <div
-                  className={`relative flex items-start gap-6 md:gap-12 ${
-                    i % 2 === 0 ? "md:flex-row" : "md:flex-row-reverse"
-                  }`}
-                >
-                  <div
-                    className={`hidden md:block flex-1 ${
-                      i % 2 === 0 ? "text-right" : "text-left"
-                    }`}
-                  >
-                    {i % 2 === 0 && <ProcessCard p={p} />}
+          <div className="space-y-16">
+            {PROCESS.map((p, i) => {
+              const isEven = i % 2 === 0;
+              return (
+                <Reveal key={p.step} delay={i * 0.08}>
+                  {/* Mobile: icon left, card right */}
+                  <div className="flex md:hidden items-start gap-5 pl-0">
+                    <div className="relative z-10 h-14 w-14 shrink-0 rounded-2xl bg-white border-2 border-[#f2e8d8] shadow-card grid place-items-center">
+                      <span className="font-display text-lg font-bold text-gradient">{p.step}</span>
+                    </div>
+                    <ProcessCard p={p} align="left" />
                   </div>
 
-                  <div className="relative z-10 h-16 w-16 shrink-0 rounded-2xl bg-white border-2 border-[#f2e8d8] shadow-card grid place-items-center">
-                    <span className="font-display text-xl font-bold text-gradient">{p.step}</span>
-                  </div>
+                  {/* Desktop: true zigzag */}
+                  <div className="hidden md:grid md:grid-cols-[1fr_80px_1fr] items-center gap-0">
+                    {/* Left slot */}
+                    <div className={`flex ${isEven ? "justify-end pr-8" : "justify-start"}`}>
+                      {isEven && <ProcessCard p={p} align="right" />}
+                    </div>
 
-                  <div className="flex-1 md:hidden">
-                    <ProcessCard p={p} />
+                    {/* Center node */}
+                    <div className="flex justify-center">
+                      <div className="relative z-10 h-16 w-16 rounded-2xl bg-white border-2 border-[#f2e8d8] shadow-card grid place-items-center">
+                        <span className="font-display text-xl font-bold text-gradient">{p.step}</span>
+                      </div>
+                    </div>
+
+                    {/* Right slot */}
+                    <div className={`flex ${!isEven ? "justify-start pl-8" : "justify-end"}`}>
+                      {!isEven && <ProcessCard p={p} align="left" />}
+                    </div>
                   </div>
-                  <div className="hidden md:block flex-1">
-                    {i % 2 !== 0 && <ProcessCard p={p} />}
-                  </div>
-                </div>
-              </Reveal>
-            ))}
+                </Reveal>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -684,11 +728,15 @@ function ProcessTimeline() {
   );
 }
 
-function ProcessCard({ p }: { p: { title: string; desc: string } }) {
+function ProcessCard({ p, align }: { p: { title: string; desc: string }; align: "left" | "right" }) {
   return (
-    <div className="inline-block text-left rounded-2xl p-6 bg-white border border-[#f2e8d8] shadow-card max-w-md">
+    <div
+      className={`rounded-2xl p-6 bg-white border border-[#f2e8d8] shadow-card w-full max-w-sm ${
+        align === "right" ? "text-right" : "text-left"
+      }`}
+    >
       <h3 className="font-display text-xl font-bold text-[#101828]">{p.title}</h3>
-      <p className="mt-2 text-[#475467]">{p.desc}</p>
+      <p className="mt-2 text-[#475467] text-sm leading-relaxed">{p.desc}</p>
     </div>
   );
 }

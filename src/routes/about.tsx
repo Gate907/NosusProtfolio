@@ -41,7 +41,7 @@ function AboutPage() {
 
   return (
     <Layout>
-      <section className="relative pt-36 pb-20 overflow-hidden">
+      <section className="relative pt-36 pb-20">
         <Blobs variant="hero" />
         <div className="container-x relative text-center">
           <Reveal>

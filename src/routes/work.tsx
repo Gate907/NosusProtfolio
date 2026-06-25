@@ -37,7 +37,7 @@ function WorkPage() {
 
   return (
     <Layout>
-      <section className="relative pt-36 pb-12 overflow-hidden">
+      <section className="relative pt-36 pb-12">
         <Blobs variant="hero" />
         <div className="container-x relative text-center">
           <Reveal>

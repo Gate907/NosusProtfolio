@@ -37,7 +37,7 @@ const DETAILS: Record<string, string> = {
 function IndustriesPage() {
   return (
     <Layout>
-      <section className="relative pt-36 pb-16 overflow-hidden">
+      <section className="relative pt-36 pb-16">
         <Blobs variant="hero" />
         <div className="container-x relative text-center">
           <Reveal>
